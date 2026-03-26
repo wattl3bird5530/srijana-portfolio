@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TrailQuest Bangalore</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fafaf8;--bg2:#ffffff;--surface:#f4f3ef;--surface2:#eceae3;
+  --ink:#111;--ink2:#555;--ink3:#999;
+  --border:#e5e3dc;--border2:#ccc9bf;
+  --green:#16a34a;--green-bg:#dcfce7;--green-light:#f0fdf4;
+  --amber:#b45309;--amber-bg:#fef3c7;
+  --red:#dc2626;--red-bg:#fee2e2;
+  --blue:#1d4ed8;--blue-bg:#dbeafe;
+  --purple:#6d28d9;--purple-bg:#ede9fe;
+  --sans:'Space Grotesk',sans-serif;--body:'Inter',sans-serif;
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
+}
+html,body,#root{height:100%;overflow:hidden;background:var(--bg);font-family:var(--body);color:var(--ink)}
+button{cursor:pointer;font-family:var(--body);outline:none;border:none;background:none}
+input,textarea,select{font-family:var(--body);color:var(--ink);outline:none}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes confetti{0%{opacity:1;transform:translateY(0) rotate(0) scale(1)}100%{opacity:0;transform:translateY(160px) rotate(540deg) scale(.2)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+
+/* ── SPLASH ── */
+#splash{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.sp-wordmark{font-family:var(--sans);font-size:clamp(28px,5vw,44px);font-weight:700;letter-spacing:-1.5px;color:var(--ink)}
+.sp-wordmark span{color:var(--green)}
+.sp-sub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:500}
+.sp-bar{width:180px;height:2px;background:var(--border);border-radius:99px;overflow:hidden;position:relative}
+.sp-bar-fill{height:100%;background:var(--green);border-radius:99px;width:0;transition:width .3s ease}
+.sp-status{font-size:12px;color:var(--ink3);min-height:18px;text-align:center}
+
+/* ── LAYOUT ── */
+#app{position:fixed;inset:0;display:none;flex-direction:column}
+#topbar{height:52px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--border);z-index:100}
+#main-area{flex:1;display:flex;overflow:hidden;position:relative}
+#left-panel{width:340px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1);animation:slideRight .3s ease}
+#left-panel.collapsed{width:0}
+#map-container{flex:1;position:relative;min-width:0}
+#map{width:100%;height:100%}
+#right-panel{width:320px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1);animation:slideLeft .3s ease}
+#right-panel.hidden{width:0}
+
+/* ── TOPBAR ── */
+.tb-brand{display:flex;align-items:center;gap:10px}
+.tb-logo{width:30px;height:30px;border-radius:var(--r-sm);background:var(--ink);display:flex;align-items:center;justify-content:center}
+.tb-logo svg{width:16px;height:16px;fill:#fff}
+.tb-name{font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:-.4px}
+.tb-sub{font-size:10px;color:var(--ink3);margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.tb-btn{height:32px;padding:0 12px;border-radius:var(--r-sm);font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--ink2);transition:all .15s}
+.tb-btn:hover{background:var(--surface);color:var(--ink);border-color:var(--border2)}
+.tb-btn-solid{background:var(--ink);color:#fff;border-color:transparent}
+.tb-btn-solid:hover{background:#222}
+.tb-toggle{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:14px;transition:all .15s}
+.tb-toggle:hover{background:var(--surface);color:var(--ink)}
+.tb-toggle.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.user-chip{display:flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;border-radius:99px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s}
+.user-chip:hover{border-color:var(--border2);background:var(--surface2)}
+.user-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:10px;font-weight:700;flex-shrink:0}
+.user-name{font-size:12px;font-weight:500;color:var(--ink)}
+
+/* ── LEFT PANEL ── */
+.lp-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.lp-tab{flex:1;padding:12px 0;font-size:12px;font-weight:500;color:var(--ink3);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.lp-tab:hover{color:var(--ink)}
+.lp-tab.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.lp-scroll{flex:1;overflow-y:auto;padding:12px}
+
+/* ── TREK CARDS ── */
+.trek-card{border-radius:var(--r-md);border:1px solid var(--border);margin-bottom:8px;overflow:hidden;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);background:var(--bg2)}
+.trek-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.trek-card.active{border-width:1.5px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.trek-card-img{height:90px;position:relative;overflow:hidden}
+.trek-card-img-inner{width:100%;height:100%;display:flex;align-items:center;justify-content:center;transition:transform .3s ease}
+.trek-card:hover .trek-card-img-inner{transform:scale(1.04)}
+.trek-card-emoji{font-size:40px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.15))}
+.trek-card-diff{position:absolute;top:8px;left:8px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid;letter-spacing:.04em}
+.trek-card-km{position:absolute;top:8px;right:8px;font-size:10px;font-weight:500;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.88);color:var(--ink2);border:1px solid var(--border)}
+.trek-card-done-badge{position:absolute;bottom:8px;right:8px;width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center}
+.trek-card-done-badge::after{content:'';width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(0px,-1px)}
+.trek-card-body{padding:10px 12px}
+.trek-card-name{font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:-.2px;color:var(--ink);margin-bottom:3px}
+.trek-card-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink3)}
+.trek-card-meta-sep{width:3px;height:3px;border-radius:50%;background:var(--border2)}
+.trek-card-tag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;background:var(--surface);color:var(--ink3);border:1px solid var(--border);margin-left:auto}
+
+/* ── RECOMMEND BOX ── */
+.rec-box{border-radius:var(--r-lg);background:linear-gradient(135deg,#111 0%,#1a1a2e 100%);padding:16px;margin-bottom:16px;position:relative;overflow:hidden}
+.rec-box::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(22,163,74,.15)}
+.rec-eyebrow{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px}
+.rec-title{font-family:var(--sans);font-size:17px;font-weight:700;color:#fff;letter-spacing:-.3px;margin-bottom:2px}
+.rec-reason{font-size:12px;color:rgba(255,255,255,.55);line-height:1.5;margin-bottom:12px}
+.rec-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.rec-chip{font-size:10px;font-weight:500;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.1)}
+.rec-cta{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);background:#fff;color:var(--ink);font-size:12px;font-weight:600;transition:all .15s;border:none;cursor:pointer}
+.rec-cta:hover{background:#f0f0f0;transform:translateY(-1px)}
+
+/* ── WEATHER BAR ── */
+.weather-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-md);border:1px solid var(--border);margin-bottom:14px;background:var(--bg2)}
+.weather-icon{font-size:22px;flex-shrink:0}
+.weather-name{font-size:13px;font-weight:600;color:var(--ink)}
+.weather-rec{font-size:11px;color:var(--ink3);margin-top:1px}
+.weather-badge{margin-left:auto;font-size:10px;font-weight:600;padding:3px 9px;border-radius:99px;flex-shrink:0}
+
+/* ── FILTER ROW ── */
+.filter-row{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
+.fchip{padding:5px 12px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--border);color:var(--ink3);transition:all .15s;background:var(--bg2)}
+.fchip:hover{border-color:var(--border2);color:var(--ink)}
+.fchip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fchip.on-g{background:var(--green-bg);color:#14532d;border-color:#86efac}
+.fchip.on-a{background:var(--amber-bg);color:#78350f;border-color:#fde68a}
+.fchip.on-r{background:var(--red-bg);color:#7f1d1d;border-color:#fca5a5}
+.trek-count{font-size:11px;color:var(--ink3);margin-bottom:8px;font-weight:500}
+
+/* ── RIGHT PANEL (trek detail) ── */
+.rp-header{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.rp-hero{position:relative;overflow:hidden;flex-shrink:0}
+.rp-hero-inner{width:100%;height:160px;display:flex;align-items:center;justify-content:center;transition:transform .4s ease}
+.rp-hero:hover .rp-hero-inner{transform:scale(1.03)}
+.rp-hero-bg-pattern{position:absolute;inset:0;opacity:.06}
+.rp-hero-emoji{font-size:64px;filter:drop-shadow(0 4px 16px rgba(0,0,0,.2));position:relative;z-index:1;transition:transform .3s ease;animation:none}
+.rp-header-row{display:flex;justify-content:space-between;align-items:flex-start}
+.rp-icon{width:40px;height:40px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;margin-bottom:8px}
+.rp-name{font-family:var(--sans);font-size:16px;font-weight:700;letter-spacing:-.4px;color:var(--ink)}
+.rp-tag{font-size:11px;font-weight:500;color:var(--ink3);margin-top:2px}
+.rp-close{width:28px;height:28px;border-radius:var(--r-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:13px;transition:all .15s;flex-shrink:0}
+.rp-close:hover{background:var(--surface);color:var(--ink)}
+.rp-scroll{flex:1;overflow-y:auto;padding:14px 16px}
+.rp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+.rp-stat{background:var(--surface);border-radius:var(--r-sm);padding:9px 6px;text-align:center}
+.rp-stat-v{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.rp-stat-l{font-size:9px;color:var(--ink3);margin-top:2px;text-transform:uppercase;letter-spacing:.06em}
+.rp-diff{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;margin-top:6px}
+.rp-tabs{display:flex;background:var(--surface);border-radius:var(--r-sm);padding:3px;gap:3px;margin-bottom:14px}
+.rp-tab{flex:1;padding:6px;border-radius:6px;font-size:11px;font-weight:500;text-align:center;color:var(--ink3);transition:all .15s;cursor:pointer}
+.rp-tab.on{background:var(--bg2);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.rp-feat{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--purple-bg);border-radius:var(--r-sm);margin-bottom:10px}
+.rp-feat-txt{font-size:12px;color:#4c1d95;font-weight:500}
+.rp-desc{font-size:13px;color:var(--ink2);line-height:1.7}
+.rp-weather{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:12px}
+.rp-weather-top{padding:10px 12px;display:flex;gap:9px;align-items:flex-start}
+.rp-weather-name{font-size:13px;font-weight:600}
+.rp-weather-desc{font-size:11px;color:var(--ink3);margin-top:1px}
+.rp-weather-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid;margin-left:auto;white-space:nowrap;flex-shrink:0}
+.rp-weather-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)}
+.rp-weather-cell{padding:7px 12px;border-right:1px solid var(--border)}
+.rp-weather-cell:nth-child(even){border-right:none}
+.rp-weather-cell:nth-child(n+3){border-top:1px solid var(--border)}
+.rp-weather-l{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.rp-weather-v{font-size:12px;font-weight:500;color:var(--ink);margin-top:2px}
+.rp-gallery-main{border-radius:var(--r-md);border:1px solid var(--border);height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;overflow:hidden;background:var(--surface);position:relative;cursor:pointer;transition:all .2s}
+.rp-gallery-main:hover{border-color:var(--border2)}
+.rp-gallery-main:hover .rp-gallery-emoji{transform:scale(1.08)}
+.rp-gallery-emoji{font-size:56px;transition:transform .3s ease;filter:drop-shadow(0 3px 12px rgba(0,0,0,.12))}
+.rp-gallery-caption{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.45);color:#fff;font-size:10px;font-weight:500;padding:5px 10px;text-align:center;letter-spacing:.04em;backdrop-filter:blur(2px)}
+.rp-gallery-thumbs{display:flex;gap:5px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
+.rp-gallery-thumb{width:40px;height:40px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;cursor:pointer;transition:all .15s}
+.rp-gallery-thumb.on{border-color:var(--ink);border-width:2px}
+.rp-gallery-thumb:hover:not(.on){border-color:var(--border2);transform:scale(1.06)}
+.user-note-box{background:var(--surface);border-left:3px solid var(--border2);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:8px 10px;font-size:12px;color:var(--ink2);line-height:1.5;font-style:italic;margin-bottom:12px}
+.rp-footer{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+.rp-xp-row{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--surface);border-radius:var(--r-sm);margin-bottom:10px}
+.rp-xp-icon{width:30px;height:30px;border-radius:50%;background:var(--amber-bg);border:1px solid #fde68a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.rp-xp-txt{font-size:13px;font-weight:600;color:var(--ink)}
+.rp-xp-sub{font-size:10px;color:var(--ink3);margin-top:1px}
+.rp-share{height:28px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--border);font-size:11px;font-weight:500;color:var(--ink3);margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0;transition:all .15s}
+.rp-share:hover{background:var(--surface);color:var(--ink);border-color:var(--border2)}
+.cta-log{width:100%;padding:11px;border-radius:var(--r-md);font-size:13px;font-weight:600;background:var(--ink);color:#fff;transition:all .2s;letter-spacing:-.1px}
+.cta-log:hover{background:#222;transform:translateY(-1px)}
+.cta-done{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--r-md);background:var(--green-light);font-size:13px;font-weight:600;color:#14532d;border:1px solid #86efac}
+.cta-signin{text-align:center;padding:11px;border-radius:var(--r-md);font-size:12px;color:var(--ink3);border:1.5px dashed var(--border2)}
+
+/* ── MAP CUSTOM STYLES ── */
+.leaflet-container{font-family:var(--body) !important}
+.leaflet-popup-content-wrapper{border-radius:var(--r-md) !important;border:1px solid var(--border) !important;box-shadow:0 4px 20px rgba(0,0,0,.1) !important;padding:0 !important}
+.leaflet-popup-content{margin:0 !important;font-family:var(--body)}
+.leaflet-popup-tip{background:var(--bg2) !important}
+.trek-popup{padding:12px 14px;min-width:160px}
+.trek-popup-name{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.2px;margin-bottom:2px}
+.trek-popup-meta{font-size:11px;color:var(--ink3)}
+.trek-popup-diff{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;margin-top:6px}
+
+/* custom marker */
+.trek-marker{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2.5px solid;background:#fff;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:all .2s}
+.trek-marker:hover,.trek-marker.active{transform:scale(1.18);box-shadow:0 4px 16px rgba(0,0,0,.18)}
+
+/* ── MODALS ── */
+.overlay{position:fixed;inset:0;z-index:500;background:rgba(15,15,15,.35);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.12);animation:scaleIn .2s ease}
+.modal.sm{max-width:400px;width:calc(100% - 32px)}
+.modal.md{max-width:460px;width:calc(100% - 32px);max-height:86vh;display:flex;flex-direction:column}
+.modal-accent{height:3px}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.modal-title-sm{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-bottom:2px}
+.modal-title{font-family:var(--sans);font-size:18px;font-weight:700;letter-spacing:-.5px}
+.modal-close{width:28px;height:28px;border-radius:var(--r-sm);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink3);transition:all .15s}
+.modal-close:hover{background:var(--surface);color:var(--ink)}
+.modal-body{padding:20px}
+.modal-scroll{overflow-y:auto;flex:1}
+.seg{display:flex;background:var(--surface);border-radius:var(--r-sm);padding:3px;gap:3px;margin-bottom:14px}
+.seg-btn{flex:1;padding:7px;border-radius:6px;font-size:12px;font-weight:500;color:var(--ink3);transition:all .15s;text-align:center}
+.seg-btn.on{background:var(--bg2);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink2);margin-bottom:5px}
+.field input,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r-md);font-size:13px;background:var(--bg2);transition:border .15s;color:var(--ink)}
+.field input:focus,.field textarea:focus{border-color:var(--ink)}
+.field textarea{resize:none;line-height:1.5}
+.demo-note{text-align:center;font-size:11px;color:var(--ink3);background:var(--surface);border-radius:var(--r-sm);padding:6px 10px;margin-bottom:12px}
+.err{padding:8px 12px;border-radius:var(--r-sm);background:var(--red-bg);border:1px solid #fca5a5;font-size:12px;color:#7f1d1d;margin-bottom:12px}
+.btn-primary{width:100%;padding:11px;border-radius:var(--r-md);font-size:13px;font-weight:600;background:var(--ink);color:#fff;transition:all .2s;margin-bottom:8px;letter-spacing:-.1px}
+.btn-primary:hover{background:#222}
+.btn-ghost-sm{width:100%;text-align:center;font-size:12px;color:var(--ink3);padding:4px;transition:color .15s}
+.btn-ghost-sm:hover{color:var(--ink)}
+.file-area{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:var(--r-md);cursor:pointer;margin-bottom:12px;transition:all .15s}
+.file-area:hover{border-color:var(--ink);background:var(--surface)}
+.modal-btns{display:flex;gap:8px}
+.m-cancel{flex:1;padding:10px;border-radius:var(--r-md);font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--ink2);transition:all .15s}
+.m-cancel:hover{background:var(--surface);color:var(--ink)}
+.m-confirm{flex:2;padding:10px;border-radius:var(--r-md);font-size:13px;font-weight:600;color:#fff;transition:all .2s;border:none}
+.m-confirm:hover{transform:translateY(-1px)}
+
+/* ── LEADERBOARD ── */
+.lb-row{display:flex;align-items:center;gap:11px;padding:11px 20px;border-bottom:1px solid var(--border);transition:background .12s}
+.lb-row:hover{background:var(--surface)}
+.lb-rank{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;font-family:var(--sans)}
+.lb-name{font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-lv{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;border:1px solid;flex-shrink:0}
+.lb-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+.lb-xp{font-family:var(--sans);font-size:15px;font-weight:700}
+.lb-xp-l{font-size:10px;color:var(--ink3)}
+
+/* ── CHALLENGE ── */
+.ch-item{padding:14px 16px;border-bottom:1px solid var(--border);transition:background .12s}
+.ch-item:hover{background:var(--surface)}
+.ch-icon-wrap{width:36px;height:36px;border-radius:var(--r-sm);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ch-title{font-size:13px;font-weight:600;color:var(--ink)}
+.ch-desc{font-size:11px;color:var(--ink3);margin-top:2px}
+.ch-pill{font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid;flex-shrink:0}
+.ch-bar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;margin:8px 0}
+.ch-fill{height:100%;border-radius:99px;transition:width .5s ease}
+.ch-rewards{font-size:11px;color:var(--ink3);display:flex;gap:8px}
+.ch-claim{font-size:11px;font-weight:600;padding:4px 12px;border-radius:99px;background:var(--amber-bg);border:1px solid #fde68a;color:#78350f;transition:all .15s;margin-left:auto}
+.ch-claim:hover{background:#fef9c3;transform:scale(1.03)}
+
+/* ── SUCCESS BURST ── */
+#burst-overlay{position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;background:rgba(15,15,15,.5);backdrop-filter:blur(6px)}
+.burst-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xl);padding:32px 36px;text-align:center;max-width:320px;width:calc(100% - 32px);animation:scaleIn .3s ease}
+.burst-icon{width:72px;height:72px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:34px}
+.burst-title{font-family:var(--sans);font-size:22px;font-weight:700;letter-spacing:-.6px;margin-bottom:3px}
+.burst-sub{font-size:13px;color:var(--ink3);margin-bottom:18px}
+.burst-xp{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:99px;background:var(--amber-bg);border:1px solid #fde68a;font-family:var(--sans);font-size:18px;font-weight:700;color:#78350f}
+
+/* ── TOAST ── */
+#toasts{position:fixed;top:12px;right:12px;z-index:9000;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{animation:toastIn .25s ease;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 14px;display:flex;gap:9px;align-items:flex-start;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.toast-icon{width:28px;height:28px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.toast-t{font-size:12px;font-weight:600;color:var(--ink)}
+.toast-m{font-size:11px;color:var(--ink3);margin-top:2px}
+
+/* ── MOBILE ── */
+@media(max-width:640px){
+  #left-panel{display:none}
+  #right-panel{display:none}
+  #mob-bar{display:flex !important}
+  #mob-sheet-wrap{display:block !important}
+}
+#mob-bar{display:none;position:absolute;bottom:0;left:0;right:0;z-index:50;background:rgba(250,250,248,.92);backdrop-filter:blur(12px);border-top:1px solid var(--border);height:54px}
+.mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink3);transition:color .15s;font-size:9px;font-weight:500;border-right:1px solid var(--border)}
+.mob-tab:last-child{border-right:none}
+.mob-tab:hover{color:var(--ink)}
+.mob-tab-icon{font-size:18px;line-height:1}
+#mob-sheet-wrap{display:none;position:absolute;bottom:54px;left:0;right:0;z-index:49}
+#mob-trek-sheet{background:var(--bg2);border-top:2px solid var(--border);border-radius:20px 20px 0 0;padding:16px;max-height:55vh;overflow-y:auto;animation:slideUp .2s ease}
+#mob-filter-tray{background:var(--bg2);border-top:1px solid var(--border);padding:10px 14px;display:none;gap:7px;flex-wrap:wrap}
+#mob-filter-tray.show{display:flex}
+</style>
+</head>
+<body>
+<!-- SPLASH -->
+<div id="splash">
+  <div class="sp-wordmark">Trail<span>Quest</span></div>
+  <div class="sp-sub">Bangalore · 14 trails · ≤80 km</div>
+  <div class="sp-bar"><div class="sp-bar-fill" id="sp-fill"></div></div>
+  <div class="sp-status" id="sp-status">Loading…</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="tb-brand">
+      <button id="lp-toggle" class="tb-toggle active" title="Toggle sidebar">☰</button>
+      <div class="tb-logo"><svg viewBox="0 0 16 16"><path d="M8 1L2 5v8h12V5L8 1zm0 2.5L12 6.5V11H4V6.5L8 3.5z"/></svg></div>
+      <div><div class="tb-name">TrailQuest</div><div class="tb-sub">Bangalore</div></div>
+    </div>
+    <div class="tb-right" id="tb-right">
+      <button class="tb-btn" id="tb-lb" style="display:none" onclick="showModal('lb')">Leaderboard</button>
+      <button class="tb-btn" id="tb-ch" style="display:none" onclick="showModal('ch')">Challenges</button>
+      <div class="user-chip" id="user-chip" style="display:none" onclick="showModal('profile')">
+        <div class="user-av" id="user-av"></div>
+        <span class="user-name" id="user-name"></span>
+      </div>
+      <button class="tb-btn" id="tb-out" style="display:none" onclick="signOut()">Sign out</button>
+      <button class="tb-btn tb-btn-solid" id="tb-signin" onclick="showModal('auth')">Sign in</button>
+    </div>
+  </div>
+  <!-- MAIN -->
+  <div id="main-area">
+    <div id="left-panel">
+      <div class="lp-tabs">
+        <button class="lp-tab on" data-tab="treks" onclick="switchTab('treks',this)">Trails</button>
+        <button class="lp-tab" data-tab="recommend" onclick="switchTab('recommend',this)">For you</button>
+      </div>
+      <div class="lp-scroll" id="lp-content"></div>
+    </div>
+    <div id="map-container"><div id="map"></div></div>
+    <div id="right-panel" class="hidden"><div id="rp-inner" style="display:flex;flex-direction:column;height:100%"></div></div>
+  </div>
+  <!-- MOBILE -->
+  <div id="mob-bar">
+    <button class="mob-tab" onclick="toggleMobFilter()"><span class="mob-tab-icon">⚡</span>Filter</button>
+    <button class="mob-tab" onclick="switchTab('recommend');showMobSheet('recommend')"><span class="mob-tab-icon">✦</span>For you</button>
+    <button class="mob-tab" id="mob-me" onclick="handleMobMe()"><span class="mob-tab-icon">👤</span>Me</button>
+    <button class="mob-tab" onclick="showModal('lb')"><span class="mob-tab-icon">🏆</span>Rank</button>
+  </div>
+  <div id="mob-sheet-wrap">
+    <div id="mob-filter-tray">
+      <button class="fchip on" onclick="setFilter('all',this)">All</button>
+      <button class="fchip" onclick="setFilter('Easy',this)">Easy</button>
+      <button class="fchip" onclick="setFilter('Medium',this)">Medium</button>
+      <button class="fchip" onclick="setFilter('Hard',this)">Hard</button>
+    </div>
+    <div id="mob-trek-sheet" style="display:none"></div>
+  </div>
+</div>
+
+<!-- CREDIT — fixed, never overlapping -->
+<div style="position:fixed;bottom:12px;left:14px;z-index:9999;display:flex;align-items:center;gap:5px;pointer-events:auto">
+  <div style="width:4px;height:4px;border-radius:50%;background:var(--green)"></div>
+  <a href="https://wattl3bird5530.github.io/srijana-portfolio/" target="_blank" rel="noopener" style="font-size:11px;font-weight:500;color:var(--ink3);text-decoration:none;letter-spacing:-.1px;transition:color .2s" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--ink3)'">crafted by Srijana ↗</a>
+</div>
+
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   TREK DATA
+══════════════════════════════════════════════ */
+const TREKS=[
+  {id:"nandi",     name:"Nandi Hills",        diff:"Easy",  dc:"#16a34a",db:"#dcfce7",el:"1478m",dist:"3 km", dur:"2–3 hrs", km:60,  xp:0, lat:13.3702,lng:77.6835,uxp:0,  tag:"Sunrise",    icon:"⛰️",feat:"Tipu Sultan's summer palace",desc:"Bangalore's crown jewel at 1478 m. Misty sunrise views, ancient fortress ruins, Tipu Sultan's palace — a perfect beginner trail that never feels like one.",photos:["🌅","🏯","🌿","⛰️"],weather:{best:"Oct–Feb",avoid:"Apr–Jun",temp:"12–18°C",rain:"Low"},bg:"linear-gradient(135deg,#d1fae5 0%,#a7f3d0 100%)"},
+  {id:"channagiri", name:"Channagiri",         diff:"Easy",  dc:"#16a34a",db:"#dcfce7",el:"1350m",dist:"3 km", dur:"2–2.5 hrs",km:58, xp:0, lat:13.388, lng:77.673,uxp:0,  tag:"Day trek",   icon:"🌿",feat:"Origin of North Pinakini River",desc:"Nandi's quieter neighbour. A temple at base camp, boulder-strewn trail, and views across the entire Nandi range — all within 2 hours.",photos:["🌄","🌿","🗿","🔔"],weather:{best:"Sep–Mar",avoid:"May–Jun",temp:"14–20°C",rain:"Low"},bg:"linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%)"},
+  {id:"horagina",   name:"Horagina Betta",     diff:"Easy",  dc:"#16a34a",db:"#dcfce7",el:"1200m",dist:"4 km", dur:"2.5–3 hrs",km:60, xp:0, lat:13.395, lng:77.69, uxp:0,  tag:"Hidden gem", icon:"🌾",feat:"Triple hill panorama",desc:"Narrow thorny trail revealing Nandi, Skandagiri and Channagiri simultaneously from the summit — three peaks for the effort of one.",photos:["🌾","🗺️","🌅","🏔️"],weather:{best:"Oct–Feb",avoid:"Jun–Aug",temp:"14–21°C",rain:"Low"},bg:"linear-gradient(135deg,#fef9c3 0%,#d1fae5 100%)"},
+  {id:"ramanagara", name:"Ramanagara",         diff:"Easy",  dc:"#16a34a",db:"#dcfce7",el:"914m", dist:"4 km", dur:"2–3 hrs",  km:50, xp:0, lat:12.7246,lng:77.2856,uxp:0, tag:"Sholay Hills",icon:"🎬",feat:"Sholay filming location",desc:"India's most cinematic hills. Seven granite boulders, vulture colonies, Kanva reservoir views — and yes, that's where Sholay was filmed.",photos:["🎬","🦅","🪨","🌅"],weather:{best:"All year",avoid:"Midday May",temp:"18–28°C",rain:"Moderate"},bg:"linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)"},
+  {id:"devarayana", name:"Devarayanadurga",    diff:"Easy",  dc:"#16a34a",db:"#dcfce7",el:"1213m",dist:"2 km", dur:"1.5–2 hrs",km:70, xp:0, lat:13.388, lng:77.168,uxp:0,  tag:"Temple trek", icon:"🕍",feat:"Twin Narasimha temples",desc:"Sacred twin temples — Bhoga at base, Yoga at summit. Dense forest and fort ruins frame the ascent perfectly.",photos:["🕍","🙏","🌳","🏰"],weather:{best:"Oct–Mar",avoid:"Apr–May",temp:"16–24°C",rain:"Low"},bg:"linear-gradient(135deg,#ede9fe 0%,#ddd6fe 100%)"},
+  {id:"savandurga", name:"Savandurga",         diff:"Medium",dc:"#d97706",db:"#fef3c7",el:"1226m",dist:"6 km", dur:"4–5 hrs",  km:60, xp:0, lat:12.919, lng:77.293,uxp:0,  tag:"Monolith",   icon:"🪨",feat:"Asia's largest monolith",desc:"The Fort of Death. Asia's largest monolith rises sheer from the plains — two routes, Karigudda and Billigudda, both unforgiving and spectacular.",photos:["🪨","🏔️","🌊","🌄"],weather:{best:"Nov–Feb",avoid:"Monsoon",temp:"16–24°C",rain:"Avoid wet"},bg:"linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)"},
+  {id:"skandagiri",  name:"Skandagiri",         diff:"Medium",dc:"#d97706",db:"#fef3c7",el:"1450m",dist:"8 km", dur:"5–6 hrs",  km:68, xp:0, lat:13.606, lng:77.742,uxp:0,  tag:"Night trek",  icon:"🌙",feat:"Cloud sea at dawn",desc:"Start at midnight. Climb fog-shrouded Tipu Sultan ruins. Watch the sun rise over an endless sea of cloud. Nothing in Bangalore compares.",photos:["🌙","☁️","🏔️","🌅"],weather:{best:"Nov–Jan",avoid:"Monsoon",temp:"10–17°C",rain:"Low"},bg:"linear-gradient(135deg,#1e1b4b 0%,#312e81 100%)"},
+  {id:"anthargange", name:"Anthargange",        diff:"Medium",dc:"#d97706",db:"#fef3c7",el:"1226m",dist:"5 km", dur:"3–4 hrs",  km:70, xp:0, lat:13.608, lng:78.106,uxp:0,  tag:"Cave trek",   icon:"🌋",feat:"Ancient volcanic lava tubes",desc:"Karnataka's only cave trek. Volcanic labyrinths, boulder crawls, a Shiva temple — and absolute cave silence underground.",photos:["🌋","🕳️","🗿","⛩️"],weather:{best:"Oct–Mar",avoid:"Monsoon",temp:"16–24°C",rain:"Low"},bg:"linear-gradient(135deg,#451a03 0%,#92400e 100%)"},
+  {id:"makalidurga",name:"Makalidurga",        diff:"Medium",dc:"#d97706",db:"#fef3c7",el:"1117m",dist:"5 km", dur:"3–4 hrs",  km:60, xp:0, lat:13.151, lng:77.444,uxp:0,  tag:"Railway trek",icon:"🚂",feat:"Trek along railway tracks",desc:"The trail begins along the Bangalore–Mumbai railway. Fort walls crown a humped monolith that watches over trains below.",photos:["🚂","🏰","🌿","🌄"],weather:{best:"Oct–Mar",avoid:"Jun–Aug",temp:"14–22°C",rain:"Low"},bg:"linear-gradient(135deg,#f0fdf4 0%,#fef3c7 100%)"},
+  {id:"kabbaladurga",name:"Kabbaladurga",       diff:"Medium",dc:"#d97706",db:"#fef3c7",el:"1180m",dist:"6 km", dur:"4–5 hrs",  km:75, xp:0, lat:12.57,  lng:77.235,uxp:0,  tag:"Offbeat",     icon:"🏰",feat:"Ruined Chola-era fort",desc:"Near Kanakapura — Chola fort ruins atop steep terrain. Almost no crowds. Raw forest. No Instagram filter required.",photos:["🏰","🌳","🪨","🦋"],weather:{best:"Oct–Feb",avoid:"Apr–May",temp:"18–26°C",rain:"Moderate"},bg:"linear-gradient(135deg,#fef3c7 0%,#ecfdf5 100%)"},
+  {id:"huliyudurga",  name:"Huliyudurga",       diff:"Medium",dc:"#d97706",db:"#fef3c7",el:"1000m",dist:"5 km", dur:"3–4 hrs",  km:80, xp:0, lat:13.235, lng:77.012,uxp:0,  tag:"Fort trek",   icon:"🦁",feat:"Chola fort + village panorama",desc:"Tiger Fort. The climb is tough but Chola fortification walls and an unobstructed village panorama make it completely worth it.",photos:["🦁","🏰","🌾","🌅"],weather:{best:"Oct–Mar",avoid:"Apr–May",temp:"16–25°C",rain:"Low"},bg:"linear-gradient(135deg,#fef9c3 0%,#fef3c7 100%)"},
+  {id:"bananthimari",name:"Bananthimari Betta", diff:"Hard",  dc:"#dc2626",db:"#fee2e2",el:"1057m",dist:"6 km", dur:"4–5 hrs",  km:65, xp:0, lat:12.551, lng:77.405,uxp:0,  tag:"Jungle trek", icon:"🌳",feat:"50M year old boulders",desc:"South Bangalore's best kept secret. An undiscovered reserve forest, 50 million year old boulders, and rare biodiversity — no crowds, no noise.",photos:["🌳","🦎","🌿","🪨"],weather:{best:"Oct–Feb",avoid:"Monsoon",temp:"18–26°C",rain:"Moderate"},bg:"linear-gradient(135deg,#052e16 0%,#14532d 100%)"},
+  {id:"halu",         name:"Halu Chilume Ganga",diff:"Hard",  dc:"#dc2626",db:"#fee2e2",el:"1010m",dist:"5 km", dur:"3–4 hrs",  km:60, xp:0, lat:13.109, lng:77.253,uxp:0,  tag:"Thorn trek",  icon:"🌵",feat:"Thorny trail + hilltop temple",desc:"Bangalore's gnarliest short trek. Thorny scrub, rocky boulders, unmarked cave paths. A temple with bells at the top rewards the stubborn.",photos:["🌵","🔔","🗿","🌄"],weather:{best:"Nov–Feb",avoid:"Summer",temp:"16–24°C",rain:"Low"},bg:"linear-gradient(135deg,#fee2e2 0%,#fecaca 100%)"},
+  {id:"harihara",     name:"Harihara Betta",    diff:"Hard",  dc:"#dc2626",db:"#fee2e2",el:"637m", dist:"4 km", dur:"3–4 hrs",  km:60, xp:0, lat:13.442, lng:77.917,uxp:0,  tag:"Hidden fort", icon:"⛪",feat:"Twin-rock near airport",desc:"Twin-rock silhouette visible from the Hyderabad highway. Hidden temple, sweeping flatlands, direct sightlines to Nandi and Skandagiri.",photos:["⛪","🌄","🏔️","🌾"],weather:{best:"Oct–Feb",avoid:"Apr–Jun",temp:"16–26°C",rain:"Low"},bg:"linear-gradient(135deg,#fee2e2 0%,#ede9fe 100%)"},
+];
+
+const WCS=[
+  {icon:"☀️",label:"Perfect day",  desc:"Clear skies, cool breeze",    rec:"All trails open",  color:"#b45309",bg:"#fef3c7",border:"#fde68a"},
+  {icon:"⛅",label:"Partly cloudy",desc:"Mild haze, good visibility",  rec:"All trails open",  color:"#0369a1",bg:"#e0f2fe",border:"#7dd3fc"},
+  {icon:"🌧️",label:"Light rain",   desc:"Wet trails, slippery rocks",  rec:"Easy treks only",  color:"#1d4ed8",bg:"#dbeafe",border:"#93c5fd"},
+  {icon:"⛈️",label:"Heavy rain",   desc:"Dangerous conditions",        rec:"Stay home today",  color:"#dc2626",bg:"#fee2e2",border:"#fca5a5"},
+  {icon:"🌫️",label:"Foggy",        desc:"Low visibility above 1200 m", rec:"Avoid hard treks", color:"#374151",bg:"#f3f4f6",border:"#d1d5db"},
+];
+
+const CHALLENGES=[
+  {id:"first", title:"First steps",     desc:"Log your first trek",             icon:"👣",goal:1, type:"count",                             xp:0,badge:"Trailblazer"},
+  {id:"easy3", title:"Hills crawler",   desc:"Log any 3 easy treks",            icon:"🌿",goal:3, type:"diff",diff:"Easy",                  xp:0,badge:"Hills Crawler"},
+  {id:"triple",title:"Triple summit",   desc:"Log any 3 treks",                 icon:"🏔️",goal:3, type:"count",                             xp:0,badge:"Triple Crown"},
+  {id:"mono",  title:"Monolith hunter", desc:"Log Savandurga + Makalidurga",    icon:"🪨",goal:2, type:"ids",ids:["savandurga","makalidurga"],xp:0,badge:"Monolith Hunter"},
+  {id:"night", title:"Night owl",       desc:"Log Skandagiri",                  icon:"🌙",goal:1, type:"specific",id2:"skandagiri",          xp:0,badge:"Night Owl"},
+  {id:"hard2", title:"Iron legs",       desc:"Log any 2 hard treks",            icon:"💪",goal:2, type:"diff",diff:"Hard",                  xp:0,badge:"Iron Legs"},
+  {id:"all",   title:"BLR trail king",  desc:"Log all 14 treks",                icon:"👑",goal:14,type:"count",                             xp:0,badge:"Trail King"},
+];
+
+/* STATE */
+let S={user:null,filter:'all',selId:null,tab:'treks',wc:null,galIdx:0,rpTab:'info',DB:{},map:null,markers:{}};
+function seed(e,n,done,badges){S.DB[e]={uid:'u'+n[0],email:e,pw:'demo123',name:n,done,badges,photos:{},notes:{}};}
+seed('arjun@demo.com','Arjun K',['nandi','savandurga','skandagiri','anthargange','makalidurga'],['Trailblazer','Triple Crown','Night Owl']);
+seed('priya@demo.com','Priya S',['nandi','channagiri','horagina','ramanagara'],['Trailblazer','Hills Crawler']);
+seed('ravi@demo.com','Ravi M',['nandi'],['Trailblazer']);
+seed('kavya@demo.com','Kavya R',['nandi','savandurga','skandagiri','anthargange','makalidurga','ramanagara','bananthimari','halu','harihara','kabbaladurga','huliyudurga'],['Trailblazer','Triple Crown','Night Owl','Monolith Hunter','Iron Legs','Hills Crawler']);
+
+/* HELPERS */
+function getWC(){const m=new Date().getMonth();if(m>=5&&m<=8)return WCS[Math.random()>.5?2:3];return WCS[Math.floor(Math.random()*2)];}
+function getWRec(wc,t){if(wc.label==="Heavy rain")return{ok:false,msg:"Unsafe today"};if(wc.label==="Light rain"&&t.diff==="Hard")return{ok:false,msg:"Risky in rain"};if(wc.label==="Foggy"&&t.diff==="Hard")return{ok:false,msg:"Low visibility"};return{ok:true,msg:"Good to go"};}
+function evalC(done,badges){return CHALLENGES.map(c=>{let p=0;if(c.type==="count")p=Math.min(done.length,c.goal);else if(c.type==="diff")p=Math.min(done.filter(id=>TREKS.find(t=>t.id===id)?.diff===c.diff).length,c.goal);else if(c.type==="specific")p=done.includes(c.id2)?1:0;else if(c.type==="ids")p=Math.min(c.ids.filter(i=>done.includes(i)).length,c.goal);return{...c,prog:p,done:p>=c.goal,claimed:badges?.includes(c.badge)};});}
+function getBoard(){return Object.values(S.DB).map(u=>({name:u.name,done:u.done.length,badges:u.badges?.length||0})).sort((a,b)=>b.done-a.done);}
+function toast(title,msg,icon,bg){bg=bg||'#dcfce7';const el=document.createElement('div');el.className='toast';el.innerHTML=`<div class="toast-icon" style="background:${bg}">${icon||'✓'}</div><div><div class="toast-t">${title}</div>${msg?`<div class="toast-m">${msg}</div>`:''}</div>`;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),4000);}
+function done(){return S.user?.done||[];}
+
+/* RECOMMEND LOGIC */
+function getRecommendations(){
+  const wc=S.wc;const userDone=done();
+  const notDone=TREKS.filter(t=>!userDone.includes(t.id));
+  if(!notDone.length)return TREKS.slice(0,3).map(t=>({...t,reason:"You've done it all! A revisit?",score:1}));
+  const scored=notDone.map(t=>{
+    let score=0;let reasons=[];
+    if(wc){const rec=getWRec(wc,t);if(rec.ok){score+=3;reasons.push(`Good weather for ${t.diff.toLowerCase()} trails`);}else{score-=5;}}
+    if(t.diff==="Easy"){score+=1;reasons.push("Great for a quick weekend");}
+    if(t.tag.includes("Night")&&new Date().getHours()>=18){score+=2;reasons.push("Perfect timing for a night trek");}
+    if(t.tag.includes("Sunrise")&&new Date().getHours()<9){score+=2;reasons.push("Catch today's sunrise");}
+    if(t.km<=60){score+=1;reasons.push("Close to the city");}
+    return{...t,score,reason:reasons[0]||`Highly rated ${t.diff.toLowerCase()} trek`};
+  });
+  scored.sort((a,b)=>b.score-a.score);
+  return scored.slice(0,3);
+}
+
+/* ══════════════════════════════════════════════
+   SPLASH → INIT
+══════════════════════════════════════════════ */
+(function(){
+  const msgs=["Loading Bangalore map…","Placing trail markers…","Checking today's weather…","Almost ready!","Let's go!"];
+  const fill=document.getElementById('sp-fill'),st=document.getElementById('sp-status');
+  let p=0,i=0;
+  const iv=setInterval(()=>{
+    p=Math.min(p+Math.floor(Math.random()*22)+12,100);fill.style.width=p+'%';
+    st.textContent=msgs[Math.min(i++,msgs.length-1)];
+    if(p>=100){clearInterval(iv);setTimeout(()=>{
+      const sp=document.getElementById('splash');sp.style.transition='opacity .4s';sp.style.opacity='0';
+      setTimeout(()=>{sp.style.display='none';document.getElementById('app').style.display='flex';initApp();},400);
+    },500);}
+  },380);
+})();
+
+/* ══════════════════════════════════════════════
+   LEAFLET MAP
+══════════════════════════════════════════════ */
+function initMap(){
+  S.map=L.map('map',{zoomControl:false,attributionControl:true}).setView([13.2,77.5],10);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
+    subdomains:'abcd',maxZoom:19
+  }).addTo(S.map);
+  L.control.zoom({position:'bottomright'}).addTo(S.map);
+  TREKS.forEach(t=>addMarker(t));
+}
+
+function addMarker(t){
+  const done_flag=done().includes(t.id);
+  const borderColor=t.dc;
+  const icon=L.divIcon({
+    className:'',
+    html:`<div class="trek-marker" style="border-color:${borderColor};background:${done_flag?borderColor:'#fff'};font-size:${S.selId===t.id?'18px':'15px'};width:${S.selId===t.id?'42px':'34px'};height:${S.selId===t.id?'42px':'34px'}">${done_flag?'✅':t.icon}</div>`,
+    iconSize:[44,44],iconAnchor:[22,22],popupAnchor:[0,-22]
+  });
+  const marker=L.marker([t.lat,t.lng],{icon}).addTo(S.map);
+  const popupHtml=`<div class="trek-popup"><div class="trek-popup-name">${t.name}</div><div class="trek-popup-meta">${t.el} · ${t.dist} · ${t.km} km from BLR</div><span class="trek-popup-diff" style="background:${t.db};color:${t.dc};border:1px solid ${t.dc}40">${t.diff}</span></div>`;
+  marker.bindPopup(popupHtml,{closeButton:false,maxWidth:200});
+  marker.on('click',()=>{selectTrek(t.id);marker.openPopup();});
+  marker.on('mouseover',()=>marker.openPopup());
+  S.markers[t.id]=marker;
+}
+
+function refreshMarkers(){
+  Object.values(S.markers).forEach(m=>m.remove());
+  S.markers={};
+  TREKS.forEach(t=>addMarker(t));
+}
+
+/* ══════════════════════════════════════════════
+   LEFT PANEL
+══════════════════════════════════════════════ */
+function switchTab(tab,el){
+  S.tab=tab;
+  document.querySelectorAll('.lp-tab').forEach(b=>b.classList.remove('on'));
+  if(el)el.classList.add('on');
+  else document.querySelectorAll('.lp-tab').forEach(b=>{if(b.dataset.tab===tab)b.classList.add('on');});
+  renderLP();
+}
+
+function renderLP(){
+  const c=document.getElementById('lp-content');if(!c)return;
+  if(S.tab==='treks')renderTrekList(c);
+  else renderRecommend(c);
+}
+
+function renderTrekList(c){
+  const wc=S.wc;
+  const filtered=S.filter==='all'?TREKS:TREKS.filter(t=>t.diff===S.filter);
+  const userDone=done();
+  c.innerHTML='';
+
+  /* weather bar */
+  if(wc){
+    const wb=document.createElement('div');wb.className='weather-bar';wb.style.borderColor=wc.border;
+    wb.innerHTML=`<span class="weather-icon">${wc.icon}</span><div><div class="weather-name" style="color:${wc.color}">${wc.label}</div><div class="weather-rec">${wc.rec}</div></div><span class="weather-badge" style="color:${wc.color};background:${wc.bg};border:1px solid ${wc.border}">${wc.rec.split(' ').slice(0,2).join(' ')}</span>`;
+    c.appendChild(wb);
+  }
+
+  /* filter chips */
+  const fr=document.createElement('div');fr.className='filter-row';
+  [['all','All'],['Easy','Easy'],['Medium','Medium'],['Hard','Hard']].forEach(([v,l])=>{
+    const b=document.createElement('button');
+    const activeClass=v==='all'?'on':v==='Easy'?'on-g':v==='Medium'?'on-a':'on-r';
+    b.className='fchip'+(S.filter===v?' '+activeClass:'');b.textContent=l;
+    b.onclick=()=>setFilter(v,b);fr.appendChild(b);
+  });
+  c.appendChild(fr);
+
+  /* count */
+  const ct=document.createElement('div');ct.className='trek-count';ct.textContent=`${filtered.length} trail${filtered.length!==1?'s':''}`;c.appendChild(ct);
+
+  /* cards */
+  filtered.forEach(t=>{
+    const isDone=userDone.includes(t.id);const isActive=S.selId===t.id;
+    const card=document.createElement('div');card.className='trek-card'+(isActive?' active':'');
+    if(isActive)card.style.borderColor=t.dc;
+    card.innerHTML=`
+      <div class="trek-card-img">
+        <div class="trek-card-img-inner" style="background:${t.bg}">
+          <span class="trek-card-emoji">${t.icon}</span>
+        </div>
+        <span class="trek-card-diff" style="background:${t.db};color:${t.dc};border-color:${t.dc}30">${t.diff}</span>
+        <span class="trek-card-km">${t.km} km</span>
+        ${isDone?'<div class="trek-card-done-badge"></div>':''}
+      </div>
+      <div class="trek-card-body">
+        <div class="trek-card-name">${t.name}</div>
+        <div class="trek-card-meta">
+          <span>${t.el}</span><div class="trek-card-meta-sep"></div>
+          <span>${t.dist}</span><div class="trek-card-meta-sep"></div>
+          <span>${t.dur}</span>
+          <span class="trek-card-tag">${t.tag}</span>
+        </div>
+      </div>`;
+    card.onclick=()=>selectTrek(t.id);
+    c.appendChild(card);
+  });
+}
+
+function renderRecommend(c){
+  const wc=S.wc;const recs=getRecommendations();
+  c.innerHTML='';
+
+  /* weather */
+  if(wc){
+    const wb=document.createElement('div');wb.className='weather-bar';wb.style.borderColor=wc.border;
+    wb.innerHTML=`<span class="weather-icon">${wc.icon}</span><div><div class="weather-name" style="color:${wc.color}">${wc.label}</div><div class="weather-rec">${wc.desc}</div></div>`;
+    c.appendChild(wb);
+  }
+
+  /* heading */
+  const h=document.createElement('div');h.style.cssText='font-family:var(--sans);font-size:16px;font-weight:700;letter-spacing:-.4px;margin-bottom:12px;color:var(--ink)';
+  h.textContent=S.user?`For you, ${S.user.name.split(' ')[0]}…`:'Recommended trails';
+  c.appendChild(h);
+
+  recs.forEach((t,i)=>{
+    const box=document.createElement('div');box.className='rec-box';box.style.animationDelay=`${i*.08}s`;
+    box.style.background=t.diff==='Hard'?'linear-gradient(135deg,#1c1917 0%,#292524 100%)':t.diff==='Medium'?'linear-gradient(135deg,#1c1917 0%,#1a1207 100%)':'linear-gradient(135deg,#0a1628 0%,#0d2210 100%)';
+    box.innerHTML=`
+      <div class="rec-eyebrow">${i===0?'top pick':'also good'} · ${t.tag}</div>
+      <div class="rec-title">${t.name}</div>
+      <div class="rec-reason">${t.reason}</div>
+      <div class="rec-chips">
+        <span class="rec-chip">${t.diff}</span>
+        <span class="rec-chip">${t.el}</span>
+        <span class="rec-chip">${t.km} km away</span>
+        <span class="rec-chip">${t.dist}</span>
+      </div>
+      <button class="rec-cta" onclick="selectTrek('${t.id}')">View trail <span style="font-size:14px">${t.icon}</span></button>`;
+    c.appendChild(box);
+  });
+
+  if(!S.user){
+    const note=document.createElement('div');note.style.cssText='text-align:center;padding:16px;font-size:12px;color:var(--ink3);border:1.5px dashed var(--border2);border-radius:var(--r-md);margin-top:10px';
+    note.textContent='Sign in for personalised recommendations based on your completed trails.';c.appendChild(note);
+  }
+}
+
+function setFilter(f,el){
+  S.filter=f;
+  document.querySelectorAll('.fchip').forEach(b=>{b.className='fchip';});
+  if(el){const cls=f==='all'?'on':f==='Easy'?'on-g':f==='Medium'?'on-a':'on-r';el.className='fchip '+cls;}
+  if(S.tab==='treks')renderLP();
+}
+
+/* ══════════════════════════════════════════════
+   SELECT TREK → RIGHT PANEL
+══════════════════════════════════════════════ */
+function selectTrek(id){
+  if(S.selId===id){S.selId=null;document.getElementById('right-panel').classList.add('hidden');refreshMarkers();renderLP();return;}
+  S.selId=id;S.rpTab='info';S.galIdx=0;
+  document.getElementById('right-panel').classList.remove('hidden');
+  renderRP();renderLP();refreshMarkers();
+  const t=TREKS.find(x=>x.id===id);if(t&&S.map)S.map.setView([t.lat,t.lng],13,{animate:true});
+}
+
+function closeRP(){S.selId=null;document.getElementById('right-panel').classList.add('hidden');refreshMarkers();renderLP();}
+
+function renderRP(){
+  const rp=document.getElementById('rp-inner');if(!rp)return;
+  const t=TREKS.find(x=>x.id===S.selId);if(!t){rp.innerHTML='';return;}
+  const isDone=done().includes(t.id);const wc=S.wc;const rec=wc?getWRec(wc,t):{ok:true};
+  const userPhoto=S.user&&S.DB[S.user.email]?.photos?.[t.id];
+  const userNote=S.user&&S.DB[S.user.email]?.notes?.[t.id];
+  const glabels=["Summit","Trail","View","Camp"];
+  const galItems=[...t.photos.map((e,i)=>({type:'emoji',val:e,label:glabels[i]}))];
+  if(userPhoto)galItems.unshift({type:'photo',val:userPhoto,label:'Your photo'});
+  const active=galItems[S.galIdx]||galItems[0];
+
+  rp.innerHTML=`
+    <div style="height:3px;background:${t.dc};flex-shrink:0"></div>
+    <div class="rp-hero" style="background:${t.bg};flex-shrink:0">
+      <div class="rp-hero-inner"><span class="rp-hero-emoji">${t.icon}</span></div>
+    </div>
+    <div class="rp-header">
+      <div class="rp-header-row">
+        <div style="flex:1;min-width:0">
+          <div class="rp-name">${t.name}</div>
+          <div class="rp-tag" style="color:${t.dc}">${t.tag} · ${t.km} km from BLR</div>
+          <span class="rp-diff" style="background:${t.db};color:${t.dc};border:1px solid ${t.dc}30;margin-top:6px">${t.diff}</span>
+          ${!rec.ok?`<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:500;color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:99px;border:1px solid #fde68a;margin-left:6px;margin-top:6px">⚠ ${rec.msg}</span>`:''}
+        </div>
+        <button class="rp-close" onclick="closeRP()">✕</button>
+      </div>
+    </div>
+    <div class="rp-scroll">
+      <div class="rp-stats">
+        ${[["Elevation",t.el],["Distance",t.dist],["Duration",t.dur]].map(([l,v])=>`<div class="rp-stat"><div class="rp-stat-v">${v}</div><div class="rp-stat-l">${l}</div></div>`).join('')}
+      </div>
+      <div class="rp-tabs">
+        ${['info','weather','gallery'].map(tb=>`<div class="rp-tab${S.rpTab===tb?' on':''}" onclick="setRPTab('${tb}')">${tb.charAt(0).toUpperCase()+tb.slice(1)}</div>`).join('')}
+      </div>
+      <div id="rp-tab-body"></div>
+    </div>
+    <div class="rp-footer">
+      <div class="rp-xp-row">
+        <div class="rp-xp-icon">📍</div>
+        <div><div class="rp-xp-txt">Track this trek</div><div class="rp-xp-sub">Save your visit with a note or photo</div></div>
+        <button class="rp-share" onclick="shareTrek('${t.id}')">↗ Share</button>
+      </div>
+      ${!S.user?'<div class="cta-signin">Sign in to log your treks</div>'
+        :isDone?'<div class="cta-done">✓ You\'ve logged this trek!</div>'
+        :`<button class="cta-log" onclick="openLog()">Log this trek</button>`}
+    </div>`;
+  renderRPTab();
+}
+
+function renderRPTab(){
+  const t=TREKS.find(x=>x.id===S.selId);const body=document.getElementById('rp-tab-body');if(!t||!body)return;
+  const wc=S.wc;const glabels=["Summit","Trail","View","Camp"];
+  const galItems=[...t.photos.map((e,i)=>({type:'emoji',val:e,label:glabels[i]}))];
+  const userPhoto=S.user&&S.DB[S.user.email]?.photos?.[t.id];
+  const userNote=S.user&&S.DB[S.user.email]?.notes?.[t.id];
+  if(userPhoto)galItems.unshift({type:'photo',val:userPhoto,label:'Your photo'});
+  const active=galItems[S.galIdx]||galItems[0];
+
+  if(S.rpTab==='info'){
+    body.innerHTML=`<div class="rp-feat"><span style="font-size:14px">✦</span><span class="rp-feat-txt">${t.feat}</span></div><p class="rp-desc">${t.desc}</p>`;
+  } else if(S.rpTab==='weather'&&wc){
+    const rec=getWRec(wc,t);
+    body.innerHTML=`<div class="rp-weather"><div class="rp-weather-top" style="background:${wc.bg}20"><span style="font-size:22px">${wc.icon}</span><div style="flex:1"><div class="rp-weather-name" style="color:${wc.color}">${wc.label}</div><div class="rp-weather-desc">${wc.desc}</div></div><span class="rp-weather-badge" style="color:${rec.ok?'#14532d':'#7f1d1d'};background:${rec.ok?'#dcfce7':'#fee2e2'};border-color:${rec.ok?'#86efac':'#fca5a5'}">${rec.msg}</span></div><div class="rp-weather-grid">${[["Best season",t.weather.best],["Avoid",t.weather.avoid],["Temperature",t.weather.temp],["Rainfall",t.weather.rain]].map(([l,v])=>`<div class="rp-weather-cell"><div class="rp-weather-l">${l}</div><div class="rp-weather-v">${v}</div></div>`).join('')}</div></div>`;
+  } else if(S.rpTab==='gallery'){
+    body.innerHTML=`
+      <div class="rp-gallery-main" onclick="cycleGal()">
+        ${active.type==='photo'?`<img src="${active.val}" style="width:100%;height:100%;object-fit:cover">`:`<span class="rp-gallery-emoji">${active.val}</span>`}
+        <div class="rp-gallery-caption">${active.label} · tap to browse</div>
+      </div>
+      <div class="rp-gallery-thumbs">${galItems.map((it,i)=>`<div class="rp-gallery-thumb${i===S.galIdx?' on':''}" onclick="setGal(${i})">${it.type==='photo'?`<img src="${it.val}" style="width:100%;height:100%;object-fit:cover">`:it.val}</div>`).join('')}</div>
+      ${userNote?`<div class="user-note-box">"${userNote}"</div>`:''}`;
+  }
+}
+function setRPTab(t){S.rpTab=t;renderRPTab();}
+function cycleGal(){const t=TREKS.find(x=>x.id===S.selId);if(!t)return;const gi=done().includes(t.id)&&S.user&&S.DB[S.user.email]?.photos?.[t.id]?t.photos.length+1:t.photos.length;S.galIdx=(S.galIdx+1)%gi;renderRPTab();}
+function setGal(i){S.galIdx=i;renderRPTab();}
+function shareTrek(id){const t=TREKS.find(x=>x.id===id);if(!t)return;const txt=`${t.name} — ${t.km} km from Bangalore. ${t.el}, ${t.dist}. #TrailQuestBLR`;if(navigator.share){navigator.share({title:`TrailQuest: ${t.name}`,text:txt,url:window.location.href}).catch(()=>{});}else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Link copied!','','↗','#dbeafe'));}else toast('Share','Copy from address bar','↗','#dbeafe');}
+
+/* ══════════════════════════════════════════════
+   NAV UPDATE
+══════════════════════════════════════════════ */
+function updateNav(){
+  const u=S.user;
+  document.getElementById('tb-signin').style.display=u?'none':'';
+  document.getElementById('tb-out').style.display=u?'':'none';
+  document.getElementById('tb-lb').style.display=u?'':'none';
+  document.getElementById('tb-ch').style.display=u?'':'none';
+  const uc=document.getElementById('user-chip');const un=document.getElementById('user-name');const uav=document.getElementById('user-av');
+  if(u){uc.style.display='flex';un.textContent=u.name.split(' ')[0];uav.style.background='#dcfce7';uav.style.color='#14532d';uav.style.border='1px solid #86efac';uav.textContent=u.name?.charAt(0);}
+  else uc.style.display='none';
+  const mb=document.getElementById('mob-me');if(mb){mb.innerHTML=u?`<span class="mob-tab-icon">👤</span>${u.name.split(' ')[0]}`:`<span class="mob-tab-icon">🔑</span>Login`;mb.onclick=u?()=>showModal('profile'):()=>showModal('auth');}
+}
+function handleMobMe(){if(S.user)showModal('profile');else showModal('auth');}
+
+/* ══════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════ */
+function showModal(type){
+  const m=document.getElementById('modals');const ov=document.createElement('div');ov.className='overlay';ov.id='modal-ov';
+  if(type==='auth')ov.innerHTML=buildAuth();
+  else if(type==='lb')ov.innerHTML=buildLB();
+  else if(type==='ch')ov.innerHTML=buildCh();
+  else if(type==='profile')ov.innerHTML=buildProfile();
+  else if(type==='log')ov.innerHTML=buildLog();
+  ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});
+  m.innerHTML='';m.appendChild(ov);
+}
+function closeModal(){document.getElementById('modals').innerHTML='';}
+
+function buildAuth(mode='login',err=''){
+  return `<div class="modal sm">
+    <div class="modal-accent" style="background:var(--green)"></div>
+    <div class="modal-head"><div><div class="modal-title-sm">TrailQuest</div><div class="modal-title">${mode==='login'?'Welcome back':'Join the trails'}</div></div><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="seg"><button class="seg-btn${mode==='login'?' on':''}" onclick="swAuth('login')">Sign in</button><button class="seg-btn${mode==='signup'?' on':''}" onclick="swAuth('signup')">Create account</button></div>
+      ${mode==='signup'?`<div class="field"><label>Trail name</label><input id="a-name" placeholder="Your explorer name"></div>`:''}
+      <div class="field"><label>Email</label><input id="a-email" type="email" placeholder="you@email.com"></div>
+      <div class="field"><label>Password</label><input id="a-pw" type="password" placeholder="6+ characters" onkeydown="if(event.key==='Enter')doAuth()"></div>
+      ${mode==='login'?`<div class="demo-note">Demo → arjun@demo.com / demo123</div>`:''}
+      ${err?`<div class="err">${err}</div>`:''}
+      <button class="btn-primary" onclick="doAuth()">${mode==='login'?'Sign in →':'Create account →'}</button>
+      <button class="btn-ghost-sm" onclick="closeModal()">Cancel</button>
+    </div></div>`;
+}
+let _am='login';
+function swAuth(m){_am=m;document.getElementById('modal-ov').innerHTML=buildAuth(m);}
+function doAuth(){
+  const email=document.getElementById('a-email')?.value?.trim(),pw=document.getElementById('a-pw')?.value,name=document.getElementById('a-name')?.value?.trim();
+  if(!email||!pw){document.getElementById('modal-ov').innerHTML=buildAuth(_am,'Email and password required');return;}
+  if(_am==='signup'){
+    if(!name){document.getElementById('modal-ov').innerHTML=buildAuth(_am,'Trail name required');return;}
+    if(pw.length<6){document.getElementById('modal-ov').innerHTML=buildAuth(_am,'Password needs 6+ chars');return;}
+    if(S.DB[email]){document.getElementById('modal-ov').innerHTML=buildAuth(_am,'Email already registered');return;}
+    S.DB[email]={uid:'u'+Math.random().toString(36).slice(2,8),email,pw,name,done:[],badges:[],photos:{},notes:{}};S.user={...S.DB[email]};
+  }else{const u=S.DB[email];if(!u||u.pw!==pw){document.getElementById('modal-ov').innerHTML=buildAuth(_am,'Wrong email or password');return;}S.user={...u};}
+  delete S.user.pw;closeModal();onUC();toast(`Hey ${S.user.name.split(' ')[0]} 👋`,_am==='signup'?'Account created!':'Welcome back!','✓','#dcfce7');
+}
+function signOut(){S.user=null;S.selId=null;onUC();}
+function onUC(){updateNav();renderLP();if(S.selId)renderRP();refreshMarkers();}
+
+/* ══════════════════════════════════════════════
+   LOG TREK
+══════════════════════════════════════════════ */
+let _logFile=null;
+function openLog(){if(!S.user||!S.selId)return;showModal('log');}
+function buildLog(err=''){
+  const t=TREKS.find(x=>x.id===S.selId);if(!t)return '';
+  return `<div class="modal sm">
+    <div class="modal-accent" style="background:${t.dc}"></div>
+    <div class="modal-head"><div><div class="modal-title-sm">${t.name}</div><div class="modal-title">Log this trek</div></div><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px;background:var(--surface);border-radius:var(--r-md);margin-bottom:14px">
+        <div style="width:44px;height:44px;border-radius:var(--r-md);background:${t.bg};display:flex;align-items:center;justify-content:center;font-size:22px">${t.icon}</div>
+        <div style="flex:1"><div style="font-weight:600;font-size:13px;color:var(--ink)">${t.name}</div><div style="font-size:11px;color:var(--ink3);margin-top:2px">${t.el} · ${t.dist} · ${t.km} km from BLR</div></div>
+      </div>
+      <div class="field"><label>Trek note *</label><textarea id="c-note" rows="3" placeholder="How was the trail? Conditions, highlights, tips…"></textarea></div>
+      <label class="file-area">
+        <span style="font-size:18px">📷</span>
+        <div><div style="font-size:13px;font-weight:500;color:var(--ink)" id="f-lbl">Add a summit photo</div><div style="font-size:11px;color:var(--ink3);margin-top:1px">Optional · stored locally</div></div>
+        <input type="file" accept="image/*" style="display:none" onchange="onF(this)">
+      </label>
+      ${err?`<div class="err">${err}</div>`:''}
+      <div class="modal-btns">
+        <button class="m-cancel" onclick="closeModal()">Cancel</button>
+        <button class="m-confirm" onclick="submitLog()" style="background:${t.dc};color:#fff">Save log →</button>
+      </div>
+    </div></div>`;
+}
+function onF(i){_logFile=i.files[0];const l=document.getElementById('f-lbl');if(l&&_logFile)l.textContent='✓ '+_logFile.name;}
+function submitLog(){
+  const note=document.getElementById('c-note')?.value?.trim();
+  if(!note&&!_logFile){document.getElementById('modal-ov').innerHTML=buildLog('Add a note or photo to verify');return;}
+  const t=TREKS.find(x=>x.id===S.selId);if(!t||!S.user)return;
+  const u=S.DB[S.user.email];if(!u)return;
+  if(!u.done.includes(t.id))u.done.push(t.id);
+  if(note)u.notes[t.id]=note;if(_logFile)u.photos[t.id]=URL.createObjectURL(_logFile);_logFile=null;
+  S.user={...u};delete S.user.pw;
+  /* auto-award badges */
+  const cs=evalC(u.done,u.badges);cs.filter(c=>c.done&&!u.badges.includes(c.badge)).forEach(c=>{u.badges.push(c.badge);toast('Badge earned!',c.badge,'🎖','#ede9fe');});
+  closeModal();showBurst(t);onUC();renderRP();
+}
+function showBurst(t){
+  const ov=document.createElement('div');ov.id='burst-overlay';
+  const dots=Array.from({length:20},(_,i)=>({a:(i/20)*360,d:50+Math.random()*80,c:['#16a34a','#d97706','#dc2626','#6d28d9','#0369a1'][i%5],s:5+Math.random()*7,dl:Math.random()*.5}));
+  ov.innerHTML=`${dots.map(p=>`<div style="position:absolute;top:50%;left:50%;width:${p.s}px;height:${p.s}px;border-radius:2px;background:${p.c};transform:rotate(${p.a}deg) translateX(${p.d}px);animation:confetti 1.8s ease-out ${p.dl}s forwards"></div>`).join('')}
+  <div class="burst-card">
+    <div class="burst-icon" style="background:${t.bg}">${t.icon}</div>
+    <div class="burst-title">Logged!</div>
+    <div class="burst-sub">${t.name}</div>
+    <div class="burst-xp">🏔 Trek saved</div>
+  </div>`;
+  document.body.appendChild(ov);setTimeout(()=>ov.remove(),3500);
+}
+
+/* ══════════════════════════════════════════════
+   LEADERBOARD
+══════════════════════════════════════════════ */
+function buildLB(){
+  const board=getBoard();const medals=["🥇","🥈","🥉"];
+  const rows=board.map((u,i)=>{const isMe=u.name===S.user?.name;return`<div class="lb-row" style="${isMe?'background:var(--green-light)':''}"><div class="lb-rank" style="background:${i<3?['#fef3c7','#f3f4f6','#fef3c7'][i]:'var(--surface)'};color:${i<3?['#78350f','#374151','#92400e'][i]:'var(--ink3)'};font-size:${i<3?'14':'12'}px">${i<3?medals[i]:i+1}</div><div style="flex:1;min-width:0"><div class="lb-name" style="color:${isMe?'#14532d':'var(--ink)'}">${u.name}${isMe?' · you':''}</div><div class="lb-meta">${u.done} treks · ${u.badges} badges</div></div><div style="text-align:right"><div class="lb-xp" style="color:${isMe?'#14532d':'var(--ink)'}">${u.done}</div><div class="lb-xp-l">treks</div></div></div>`;}).join('');
+  return`<div class="modal md"><div class="modal-accent" style="background:var(--amber)"></div><div class="modal-head"><div><div class="modal-title-sm">Who's been out</div><div class="modal-title">Leaderboard</div></div><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-scroll">${rows}</div></div>`;
+}
+
+/* ══════════════════════════════════════════════
+   CHALLENGES
+══════════════════════════════════════════════ */
+function buildCh(){
+  const userDone=done(),badges=S.user?.badges||[];const cs=evalC(userDone,badges);
+  const items=cs.map((c,i)=>{
+    const pct=Math.min((c.prog/c.goal)*100,100);const bc=c.claimed?'#16a34a':c.done?'#d97706':'#6d28d9';const bbg=c.claimed?'#dcfce7':c.done?'#fef3c7':'#ede9fe';const bbd=c.claimed?'#86efac':c.done?'#fde68a':'#c4b5fd';
+    return`<div class="ch-item"><div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px"><div class="ch-icon-wrap">${c.icon}</div><div style="flex:1"><div class="ch-title" style="${c.done?'color:'+bc:''}">${c.title}</div><div class="ch-desc">${c.desc}</div></div><span class="ch-pill" style="color:${bc};background:${bbg};border-color:${bbd}">${c.claimed?'Done':c.done?'Claim!':c.prog+'/'+c.goal}</span></div><div class="ch-bar"><div class="ch-fill" style="width:${pct}%;background:${bc}"></div></div><div style="display:flex;justify-content:space-between;align-items:center"><div class="ch-rewards"><span>🎖 ${c.badge}</span></div>${c.done&&!c.claimed&&S.user?`<button class="ch-claim" onclick="claimBadge('${c.badge}')">Claim badge →</button>`:''}</div></div>`;
+  }).join('');
+  return`<div class="modal md"><div class="modal-accent" style="background:var(--purple)"></div><div class="modal-head"><div><div class="modal-title-sm">${cs.filter(c=>!c.claimed).length} active</div><div class="modal-title">Challenges</div></div><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-scroll">${items}</div></div>`;
+}
+function claimBadge(badge){const u=S.DB[S.user?.email];if(!u||u.badges.includes(badge))return;u.badges.push(badge);S.user={...u};delete S.user.pw;toast('Badge earned!',badge,'🎖','#ede9fe');closeModal();showModal('ch');onUC();}
+
+/* ══════════════════════════════════════════════
+   PROFILE
+══════════════════════════════════════════════ */
+function buildProfile(){
+  if(!S.user)return '';const u=S.user;
+  const userDone=u.done||[];const badges=u.badges||[];const rank=getBoard().findIndex(x=>x.name===u.name)+1;
+  const dbU=S.DB[S.user.email];
+  const history=userDone.map(id=>{const t=TREKS.find(x=>x.id===id);if(!t)return '';const note=dbU?.notes?.[id]||'';return`<div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--r-md);background:var(--surface);margin-bottom:5px;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'"><div style="width:34px;height:34px;border-radius:var(--r-sm);background:${t.bg};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${t.icon}</div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:var(--ink)">${t.name}</div>${note?`<div style="font-size:11px;color:var(--ink3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">"${note}"</div>`:''}</div><span style="font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;background:${t.db};color:${t.dc};border:1px solid ${t.dc}30;flex-shrink:0">${t.diff}</span></div>`;}).join('')||`<div style="text-align:center;padding:20px;font-size:13px;color:var(--ink3)">No treks logged yet — get outside!</div>`;
+  return`<div class="modal md"><div class="modal-accent" style="background:var(--green)"></div><div class="modal-head"><div><div class="modal-title-sm">Explorer profile</div><div class="modal-title">${u.name}</div></div><button class="modal-close" onclick="closeModal()">✕</button></div><div class="modal-scroll"><div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:13px"><div style="width:52px;height:52px;border-radius:50%;background:var(--green-bg);border:2px solid #86efac;display:flex;align-items:center;justify-content:center;font-family:var(--sans);font-size:20px;font-weight:700;color:#14532d;flex-shrink:0">${u.name?.charAt(0)}</div><div><div style="font-family:var(--sans);font-size:16px;font-weight:700;letter-spacing:-.4px;color:var(--ink)">${u.name}</div><div style="font-size:12px;color:var(--ink3);margin-top:2px">${userDone.length} treks logged · rank #${rank} globally</div></div></div><div style="padding:14px 20px;border-bottom:1px solid var(--border)"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-bottom:10px">Trek history (${userDone.length})</div>${history}</div>${badges.length>0?`<div style="padding:14px 20px"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);margin-bottom:8px">Badges (${badges.length})</div><div style="display:flex;flex-wrap:wrap;gap:5px">${badges.map(b=>`<span style="font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px;border:1px solid var(--border);color:var(--ink2);background:var(--surface)">${b}</span>`).join('')}</div></div>`:''}</div><div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0"><button style="flex:1;padding:9px;border-radius:var(--r-md);font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--ink2);transition:all .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''" onclick="closeModal();showModal('lb')">📊 Leaderboard</button><button style="flex:1;padding:9px;border-radius:var(--r-md);font-size:12px;font-weight:500;border:1px solid var(--border);color:var(--ink2);transition:all .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''" onclick="closeModal();showModal('ch')">🏆 Challenges</button></div></div>`;
+}
+
+/* ══════════════════════════════════════════════
+   TOGGLE + MOBILE
+══════════════════════════════════════════════ */
+document.getElementById('lp-toggle').addEventListener('click',()=>{
+  const lp=document.getElementById('left-panel');const btn=document.getElementById('lp-toggle');
+  lp.classList.toggle('collapsed');btn.classList.toggle('active',!lp.classList.contains('collapsed'));
+  if(S.map)setTimeout(()=>S.map.invalidateSize(),310);
+});
+function toggleMobFilter(){const t=document.getElementById('mob-filter-tray');t.classList.toggle('show');}
+function showMobSheet(type){const s=document.getElementById('mob-trek-sheet');s.style.display='block';}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+function initApp(){
+  S.wc=getWC();
+  S.mobile=window.innerWidth<=640;
+  window.addEventListener('resize',()=>{const was=S.mobile;S.mobile=window.innerWidth<=640;if(was!==S.mobile){updateNav();}if(S.map)setTimeout(()=>S.map.invalidateSize(),310);});
+  updateNav();
+  initMap();
+  renderLP();
+}
+</script>
+</body>
+</html>
