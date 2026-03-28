@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Srijana M R — Performance Marketer</title>
+<title>Srijana M R | Performance Marketing Expert — Meta, Google, Programmatic</title>
+<meta name="description" content="Srijana M R is a Performance Marketing Expert at Havas Media, Bengaluru with 4+ years managing ₹5Cr/month ad portfolios across Meta Ads, Google Ads, Bing, Spotify and more.">
+<meta name="author" content="Srijana M R">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://wattl3bird5530.github.io/srijana-portfolio/">
+<meta property="og:title" content="Srijana M R | Performance Marketing Expert">
+<meta property="og:description" content="Turning ad spend into growth — 4+ years managing ₹5Cr/month portfolios across Meta, Google, Bing & more at Havas Media, Bengaluru.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Srijana M R | Performance Marketing Expert">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231B3A2D'/><text y='.9em' font-size='70' x='12'>📈</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -597,9 +606,76 @@ section { padding:96px 52px; }
   transform: rotateY(180deg);
 }
 
+
+/* ── SCROLL PROGRESS BAR ── */
+#scroll-progress {
+  position:fixed; top:0; left:0; height:3px; z-index:9999;
+  background:linear-gradient(90deg, var(--g600), var(--g400));
+  width:0%; transition:width .1s linear; pointer-events:none;
+}
+/* ── BACK TO TOP ── */
+#back-to-top {
+  position:fixed; bottom:28px; right:24px; z-index:500;
+  width:44px; height:44px; border-radius:50%;
+  background:var(--g800); color:#fff; border:none;
+  font-size:1.1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 16px rgba(27,58,45,.3);
+  opacity:0; transform:translateY(12px);
+  transition:opacity .3s, transform .3s, background .2s;
+  pointer-events:none;
+}
+#back-to-top.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
+#back-to-top:hover { background:var(--g700); }
+/* ── ACTIVE NAV ── */
+.nav-links a.nav-active { color:var(--g700) !important; }
+/* ── HAMBURGER ── */
+.hamburger {
+  display:none; flex-direction:column; gap:5px;
+  cursor:pointer; padding:6px; border:none;
+  background:transparent; z-index:300;
+}
+.hamburger span {
+  display:block; width:24px; height:2px;
+  background:var(--g900); border-radius:2px;
+  transition:all .3s;
+}
+.hamburger.open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity:0; }
+.hamburger.open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+/* ── MOBILE DRAWER ── */
+.mobile-menu {
+  display:none; position:fixed; top:68px; left:0; right:0;
+  background:rgba(246,251,248,.98); backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--g200); z-index:199;
+  flex-direction:column; padding:16px 24px 24px; gap:4px;
+  transform:translateY(-10px); opacity:0;
+  transition:opacity .25s, transform .25s; pointer-events:none;
+}
+.mobile-menu.open { opacity:1; transform:translateY(0); pointer-events:auto; }
+.mobile-menu a {
+  font-size:.9rem; font-weight:600; color:var(--grey600);
+  text-decoration:none; padding:12px 0;
+  border-bottom:1px solid var(--g100);
+  display:flex; align-items:center; justify-content:space-between;
+  transition:color .2s;
+}
+.mobile-menu a:last-child { border-bottom:none; }
+.mobile-menu a:hover, .mobile-menu a.mob-pill { color:var(--g700); font-weight:700; }
+@media(max-width:900px) {
+  .hamburger { display:flex; }
+  .mobile-menu { display:flex; }
+  .nav-hire { display:none; }
+}
 </style>
 </head>
 <body>
+
+<!-- SCROLL PROGRESS -->
+<div id="scroll-progress"></div>
+
+<!-- BACK TO TOP -->
+<button id="back-to-top" title="Back to top">↑</button>
 
 <!-- NAV -->
 <nav>
@@ -614,7 +690,20 @@ section { padding:96px 52px; }
     <a href="https://wattl3bird5530.github.io/summit-blr/" target="_blank" style="color:var(--g700);border:1.5px solid var(--g300);border-radius:100px;padding:5px 14px;">Summit BLR ↗</a>
   </div>
   <a href="#contact" class="nav-hire">Hire Me</a>
+  <button class="hamburger" id="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#about">About</a>
+  <a href="#experience">Experience</a>
+  <a href="#work">Work</a>
+  <a href="#skills">Skills</a>
+  <a href="#contact">Contact</a>
+  <a href="https://wattl3bird5530.github.io/adpulse/adpulse_by_srijana.html" target="_blank" class="mob-pill">AdPulse Trainer ↗</a>
+  <a href="https://wattl3bird5530.github.io/summit-blr/" target="_blank" class="mob-pill">Summit BLR ↗</a>
+  <a href="#contact" class="mob-pill" style="color:var(--g900);font-weight:800;">Hire Me →</a>
+</div>
 
 <!-- HERO -->
 <div class="hero">
@@ -1058,6 +1147,51 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script><script>
+// ── Scroll progress bar + back-to-top + active nav ──
+window.addEventListener('scroll', function() {
+  var scrollTop = window.scrollY;
+  var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  var pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  var bar = document.getElementById('scroll-progress');
+  if (bar) bar.style.width = pct + '%';
+  var btn = document.getElementById('back-to-top');
+  if (btn) {
+    if (scrollTop > 400) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  }
+  var sections = ['about','experience','work','skills','contact'];
+  var navH = 90;
+  var current = '';
+  sections.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= navH) current = id;
+  });
+  document.querySelectorAll('.nav-links a').forEach(function(a) {
+    a.classList.remove('nav-active');
+    if (a.getAttribute('href') === '#' + current) a.classList.add('nav-active');
+  });
+});
+
+// ── Back to top ──
+var backBtn = document.getElementById('back-to-top');
+if (backBtn) backBtn.addEventListener('click', function() { window.scrollTo({top:0,behavior:'smooth'}); });
+
+// ── Hamburger ──
+var hbg = document.getElementById('hamburger');
+var mob = document.getElementById('mobile-menu');
+if (hbg && mob) {
+  hbg.addEventListener('click', function() {
+    hbg.classList.toggle('open');
+    mob.classList.toggle('open');
+  });
+  mob.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      hbg.classList.remove('open');
+      mob.classList.remove('open');
+    });
+  });
+}
+
 // ── Precise nav-offset smooth scroll for ALL anchor links ──
 document.querySelectorAll('a[href^="#"]').forEach(function(link) {
   link.addEventListener('click', function(e) {
